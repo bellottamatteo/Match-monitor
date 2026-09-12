@@ -173,6 +173,12 @@ def api_matches():
         return jsonify(state)
 
 
+# Avvia il thread di aggiornamento appena il modulo viene caricato,
+# sia con "python app.py" (locale) sia con gunicorn (Render/produzione).
+_poller_thread = threading.Thread(target=background_poller, daemon=True)
+_poller_thread.start()
+
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="it">
@@ -243,7 +249,5 @@ refresh();
 """
 
 if __name__ == "__main__":
-    poller = threading.Thread(target=background_poller, daemon=True)
-    poller.start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
