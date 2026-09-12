@@ -173,6 +173,22 @@ def api_matches():
         return jsonify(state)
 
 
+@app.route("/api/debug")
+def api_debug():
+    """Pagina di debug temporanea: mostra la risposta grezza di API-Football
+    e se la chiave è stata letta correttamente, per capire dove sta il problema."""
+    key_status = "MANCANTE (vuota)" if not API_FOOTBALL_KEY else f"presente, lunga {len(API_FOOTBALL_KEY)} caratteri"
+    result = {"api_key_status": key_status}
+    try:
+        headers = {"x-apisports-key": API_FOOTBALL_KEY}
+        resp = requests.get(f"{API_FOOTBALL_BASE_URL}/status", headers=headers, timeout=15)
+        result["http_status_code"] = resp.status_code
+        result["raw_response"] = resp.json()
+    except Exception as e:
+        result["exception"] = str(e)
+    return jsonify(result)
+
+
 # Avvia il thread di aggiornamento appena il modulo viene caricato,
 # sia con "python app.py" (locale) sia con gunicorn (Render/produzione).
 _poller_thread = threading.Thread(target=background_poller, daemon=True)
