@@ -173,6 +173,28 @@ def api_matches():
         return jsonify(state)
 
 
+_poller_started = False
+_poller_lock = threading.Lock()
+
+
+def ensure_poller_started():
+    """Avvia il thread di aggiornamento in sottofondo alla prima richiesta
+    ricevuta dal server. Farlo qui (invece che al caricamento del modulo)
+    evita problemi di compatibilità con come alcuni servizi di hosting
+    (come Render) avviano il processo internamente."""
+    global _poller_started
+    with _poller_lock:
+        if not _poller_started:
+            t = threading.Thread(target=background_poller, daemon=True)
+            t.start()
+            _poller_started = True
+
+
+@app.before_request
+def _start_poller_before_request():
+    ensure_poller_started()
+
+
 @app.route("/api/debug")
 def api_debug():
     """Pagina di debug temporanea: mostra la risposta grezza di API-Football
@@ -188,7 +210,7 @@ def api_debug():
         result["exception"] = str(e)
 
     # Controlla se il thread in background è vivo
-    result["poller_thread_alive"] = _poller_thread.is_alive()
+    result["poller_thread_alive"] = _poller_started
     result["current_state_snapshot"] = state
 
     # Prova a chiamare manualmente get_live_fixtures per isolare eventuali errori
@@ -201,10 +223,9 @@ def api_debug():
     return jsonify(result)
 
 
-# Avvia il thread di aggiornamento appena il modulo viene caricato,
-# sia con "python app.py" (locale) sia con gunicorn (Render/produzione).
-_poller_thread = threading.Thread(target=background_poller, daemon=True)
-_poller_thread.start()
+# Il thread di aggiornamento in background si avvia automaticamente
+# alla prima richiesta ricevuta (vedi ensure_poller_started sopra),
+# non al caricamento del modulo — più affidabile su servizi come Render.
 
 
 HTML_TEMPLATE = """
