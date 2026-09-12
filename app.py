@@ -186,6 +186,18 @@ def api_debug():
         result["raw_response"] = resp.json()
     except Exception as e:
         result["exception"] = str(e)
+
+    # Controlla se il thread in background è vivo
+    result["poller_thread_alive"] = _poller_thread.is_alive()
+    result["current_state_snapshot"] = state
+
+    # Prova a chiamare manualmente get_live_fixtures per isolare eventuali errori
+    try:
+        fixtures = get_live_fixtures()
+        result["manual_fixtures_call"] = {"success": True, "count": len(fixtures)}
+    except Exception as e:
+        result["manual_fixtures_call"] = {"success": False, "exception": str(e)}
+
     return jsonify(result)
 
 
